@@ -10,7 +10,7 @@ namespace getcert
 {
     public class getCertOptions
     {        
-        [Option('u', "url", Required = true, HelpText = "Url to get certificates from")]
+        [Value(0, Required = true, MetaName = "Url", HelpText = "Url to get certificates from")]
         public string Url{ get; set; }
 
         [Option('c', "chain", Default = false, Required = false, HelpText = "Get all certificates in chain")]
@@ -25,7 +25,7 @@ namespace getcert
             get; set;
         }
 
-        [Option('a', "alias", Default = "certificate", Required = false, HelpText = "Filename to save certificate(s)")]
+        [Option('a', "alias", Default = "", Required = false, HelpText = "Filename to save certificate(s)")]
         public string Alias { get; set; }
 
         private static bool checkAndValidateDirectory(string dir)

@@ -23,8 +23,19 @@ namespace getcert
 
         static void Main(string[] args)
         {
-            var parserResult = CommandLine.Parser.Default.ParseArguments<getCertOptions>(args).WithParsed(getCertOptions => checkAndRun(getCertOptions));
-                
+                var parser = new CommandLine.Parser(with => with.HelpWriter = null);
+
+            var parserResult = parser.ParseArguments<getCertOptions>(args);
+            parserResult
+                .WithParsed(getCertOptions => checkAndRun(getCertOptions))
+                .WithNotParsed(errs => DisplayHelp(parserResult, errs));
+
+
+
+
+
+
+
 #if DEBUG
             Console.ReadLine();
 #endif
@@ -32,14 +43,22 @@ namespace getcert
 
         private static void SaveCertificate(Uri uri)
         {
-            HttpWebRequest request = (HttpWebRequest)WebRequest.Create(uri);
-            request.AllowAutoRedirect = false;
-            request.ServerCertificateValidationCallback = ServerCertificateValidationCallback;
+            try
+            {
+                HttpWebRequest request = (HttpWebRequest)WebRequest.Create(uri);
+                request.AllowAutoRedirect = false;
+                request.ServerCertificateValidationCallback = ServerCertificateValidationCallback;
 
-            HttpWebResponse response = (HttpWebResponse)request.GetResponse();
-            response.Close();
+                HttpWebResponse response = (HttpWebResponse)request.GetResponse();
+                response.Close();
 
-//          X509Certificate2 cert = new X509Certificate2(request.ServicePoint.Certificate);
+                //                X509Certificate2 cert = new X509Certificate2(request.ServicePoint.Certificate);
+
+                //                File.WriteAllText(_path, ExportToPEM(cert));
+            }
+            catch (Exception)
+            {
+            }
         }
 
         private static void checkAndRun(getCertOptions options)
@@ -113,8 +132,10 @@ namespace getcert
             int counter = 0;
 
             foreach (var cer in chain.ChainElements)
-            {                
-                printCertificateInfo(counter, cer);
+            {
+                Console.WriteLine($"Chain: {counter}");
+
+                printCertificateInfo(cer);
 
                 if (infoOnly == false)
                 {
@@ -124,9 +145,10 @@ namespace getcert
 
                     if (savePath != "")
                     {
-                        var fullName = saveCertificate(counter, cert);
-                        
-                        Console.WriteLine($"Certificate saved to file {fullName}");
+                        string fullName = Path.Combine(savePath, string.Format("{0}-{1}.crt", alias, counter));
+                        File.WriteAllText(fullName, cert);
+
+                        Console.WriteLine($"Saved to file {fullName}");
                     }
                 }
                 Console.WriteLine();
@@ -190,22 +212,33 @@ namespace getcert
             return !fileName.Any(f => Path.GetInvalidFileNameChars().Contains(f));
         }
 
-        static void printCertificateInfo(int chainOrder, X509ChainElement cer)
+        static void DisplayHelp<T>(ParserResult<T> result, IEnumerable<Error> errs)
         {
-            Console.WriteLine($"Chain: {chainOrder}");
+            HelpText helpText = null;
+            if (errs.IsVersion())  //check if error is version request
+                helpText = HelpText.AutoBuild(result);
+            else
+            {
+                foreach( var err in errs)
+                {
+                    
+                }
+                
+                helpText = HelpText.AutoBuild(result, h =>
+                {                    
+                    return HelpText.DefaultParsingErrorsHandler(result, h);
+                }, e => e);
+            }
+            Console.WriteLine(helpText);
+        }
+
+        static void printCertificateInfo(X509ChainElement cer)
+        {            
             Console.WriteLine($"Subject: {cer.Certificate.SubjectName.Name}");
             Console.WriteLine($"Issuer: {cer.Certificate.IssuerName.Name}");
             Console.WriteLine($"Valid from:{cer.Certificate.GetEffectiveDateString()}");
             Console.WriteLine($"Valid to:{cer.Certificate.GetExpirationDateString()}");
             Console.WriteLine($"Serial No:{cer.Certificate.SerialNumber}");
-        }
-
-        static string saveCertificate(int chainOrder, string pemString)
-        {
-            string fullName = Path.Combine(savePath, string.Format("{0}-{1}.crt", alias, chainOrder));
-            File.WriteAllText(fullName, pemString);
-
-            return fullName;
         }
 
     }
