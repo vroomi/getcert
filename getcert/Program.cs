@@ -57,27 +57,30 @@ namespace getcert
                 getChain = options.Chain;
                 infoOnly = options.Info;
 
-                if (options.Directory != "")
+                if (infoOnly == false)
                 {
-                    if (!checkAndValidatePath(options.Directory))
+                    if (options.Directory != "")
                     {
-                        throw new Exception("Directory provided is not valid or doesn't exist");
+                        if (!checkAndValidatePath(options.Directory))
+                        {
+                            throw new Exception("Directory provided is not valid or doesn't exist");
+                        }
+                        else
+                        {
+                            savePath = options.Directory;
+                        }
                     }
-                    else
-                    {
-                        savePath = options.Directory;
-                    }
-                }
 
-                if (options.Alias != "")
-                {
-                    if (!IsFileNameCorrect(options.Alias))
+                    if (options.Alias != "")
                     {
-                        throw new Exception("Filename provided seems to be not valid");
-                    }
-                    else
-                    {
-                        alias = options.Alias;
+                        if (!IsFileNameCorrect(options.Alias))
+                        {
+                            throw new Exception("Filename provided seems to be not valid");
+                        }
+                        else
+                        {
+                            alias = options.Alias;
+                        }
                     }
                 }
 

@@ -5,7 +5,7 @@ using System.Runtime.InteropServices;
 // General Information about an assembly is controlled through the following
 // set of attributes. Change these attribute values to modify the information
 // associated with an assembly.
-[assembly: AssemblyTitle("getcert utility")]
+[assembly: AssemblyTitle("getcert CLI utility")]
 [assembly: AssemblyDescription("Simple utility to get certificate (chain) from given url")]
 [assembly: AssemblyConfiguration("")]
 [assembly: AssemblyCompany("")]
