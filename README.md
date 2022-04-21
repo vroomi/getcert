@@ -2,7 +2,7 @@
 Simple tool to download, display and save certificate(s) from given URL. 
 
 # Note
-This is little two-hours project written just for my purposes: to have such a simple tool without need to run openssl, to try CommandLineParser library (https://github.com/commandlineparser) and finally to write a few lines of C# code again:)   
+This is little two-hours project written just for my purposes: to have such a simple tool without need to run openssl, to try interesting CommandLineParser library (https://github.com/commandlineparser) and finally to write a few lines of C# code again:)   
 
 # Usage
 ```shell
