@@ -2,7 +2,7 @@
 Simple tool to download, display and save certificate(s) from given URL. 
 
 # Note
-This is little two-hours project written just for my purposes: to have such a simple tool without need to run openssl, to try interesting CommandLineParser library (https://github.com/commandlineparser) and finally to write a few lines of C# code again:)   
+This little two-hours project has been written just for my purposes: to have such a simple tool without need to run openssl, to try interesting CommandLineParser library (https://github.com/commandlineparser) and finally to write a few lines of C# code again:)   
 
 # Usage
 ```shell
@@ -29,5 +29,6 @@ downloads all certificates in chain (three certificates) from `https://github.co
 
 When directory option is not provided certificate(s) content and properties are only displayed in command line.
 
+## Dependencies
 
-
+CommandLineParser https://github.com/commandlineparser
