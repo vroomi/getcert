@@ -29,6 +29,6 @@ downloads all certificates in chain (three certificates) from `https://github.co
 
 When directory option is not provided certificate(s) content and properties are only displayed in command line.
 
-## Dependencies
+# Dependencies
 
 CommandLineParser https://github.com/commandlineparser
