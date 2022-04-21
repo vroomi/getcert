@@ -25,7 +25,7 @@ For example following command:
 ```shell
 getcert -u github.com -c -d c:\temp -a github
 ```
-downloads three certificates from `https://github.com` and saves them in `c:\temp directory` under filenames `github-0.crt`, `github-1.crt` and `github-2.crt`
+downloads all certificates in chain (three certificates) from `https://github.com` and saves them in `c:\temp directory` under filenames `github-0.crt`, `github-1.crt` and `github-2.crt`
 
 When directory option is not provided certificate(s) content and properties are only displayed in command line.
 
