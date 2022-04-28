@@ -88,6 +88,19 @@ namespace getcert
             }
             catch(Exception x)
             {
+                var webEx = x as WebException;
+
+                if (webEx != null && webEx.Response != null)
+                {
+                    var httpWebResponse = webEx.Response as HttpWebResponse;
+
+                    if (httpWebResponse != null)
+                    {
+                        if (httpWebResponse.StatusCode == HttpStatusCode.NotFound)
+                            return;
+                    }
+                }
+                                
                 Console.WriteLine(x.Message);
             }
         }
