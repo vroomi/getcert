@@ -20,10 +20,13 @@ namespace getcert
         static bool infoOnly = false;
         static string savePath = "";
         static string alias = "";
+        static ParserResult<getCertOptions> parserResult = null;
 
         static void Main(string[] args)
         {
-            var parserResult = CommandLine.Parser.Default.ParseArguments<getCertOptions>(args).WithParsed(getCertOptions => checkAndRun(getCertOptions));
+            parserResult = CommandLine.Parser.Default.ParseArguments<getCertOptions>(args);
+            parserResult.WithParsed(getCertOptions => checkAndRun(getCertOptions));
+            
                 
 #if DEBUG
             Console.ReadLine();
@@ -92,7 +95,7 @@ namespace getcert
 
                 if (webEx != null && webEx.Response != null)
                 {
-                    var httpWebResponse = webEx.Response as HttpWebResponse;
+                    HttpWebResponse httpWebResponse = webEx.Response as HttpWebResponse;
 
                     if (httpWebResponse != null)
                     {
@@ -100,8 +103,12 @@ namespace getcert
                             return;
                     }
                 }
-                                
-                Console.WriteLine(x.Message);
+
+                Console.WriteLine(HeadingInfo.Default);
+                Console.WriteLine(CopyrightInfo.Default);
+                Console.WriteLine();                    
+                Console.WriteLine($"ERROR(S): {x.Message}");
+
             }
         }
 
