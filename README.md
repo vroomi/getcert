@@ -4,6 +4,9 @@ Simple tool to download, display and save certificate(s) from given URL.
 # Note
 This little two-hours project has been written just for my purposes: to have such a simple tool without need to run openssl, to try interesting CommandLineParser library (https://github.com/commandlineparser) and finally to write a few lines of C# code again:)   
 
+# Known limitations
+For some websites requiring certificate authentication cannot be established SSL/TLS channel. Will solve in some of future updates.
+
 # Usage
 ```shell
 getcert -u|--url URL [-c|--chain] [-i|--info] [-d|--dir directory] [-a|--alias filename]
