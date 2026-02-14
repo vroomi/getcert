@@ -1,40 +1,17 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using CommandLine;
-using System.IO;
+using System;
 
 namespace getcert
 {
     public class getCertOptions
-    {        
-        [Option('u', "url", Required = true, HelpText = "Url to get certificates from")]
-        public string Url{ get; set; }
+    {
+        public string Url { get; set; } = string.Empty;
 
-        [Option('c', "chain", Default = false, Required = false, HelpText = "Get all certificates in chain")]
         public bool Chain { get; set; }
 
-        [Option('i', "info", Default = false, Required = false, HelpText = "Get certificate info only")]
         public bool Info { get; set; }
 
-        [Option('d', "dir", Default = "", Required = false, HelpText = "Directory to save certificates to")]
-        public string Directory 
-        {
-            get; set;
-        }
+        public string Directory { get; set; } = string.Empty;
 
-        [Option('a', "alias", Default = "certificate", Required = false, HelpText = "Filename to save certificate(s)")]
-        public string Alias { get; set; }
-
-        private static bool checkAndValidateDirectory(string dir)
-        {
-             if (dir != "" && !System.IO.Directory.Exists(dir))
-                return false;
-
-            return true;
-        }
-
+        public string Alias { get; set; } = "certificate";
     }
 }
