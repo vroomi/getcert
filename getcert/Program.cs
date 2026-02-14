@@ -1,128 +1,207 @@
-﻿using System;
-using System.Collections.Generic;
+using System;
+using System.IO;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.Net;
 using System.Net.Security;
 using System.Security.Cryptography.X509Certificates;
-using System.IO;
-using CommandLine;
-using CommandLine.Text;
-
-using System.Text.RegularExpressions;
+using System.Text;
 
 namespace getcert
 {
     internal class Program
     {
-        static bool getChain = false;
-        static bool infoOnly = false;
-        static string savePath = "";
-        static string alias = "";
-        static ParserResult<getCertOptions> parserResult = null;
+        private static bool getChain;
+        private static bool infoOnly;
+        private static string savePath = string.Empty;
+        private static string alias = "certificate";
 
-        static void Main(string[] args)
+        private static void Main(string[] args)
         {
-            parserResult = CommandLine.Parser.Default.ParseArguments<getCertOptions>(args);
-            parserResult.WithParsed(getCertOptions => checkAndRun(getCertOptions));
-            
-                
+            if (!TryParseArgs(args, out var options, out var parseError))
+            {
+                PrintUsage(parseError);
+#if DEBUG
+                Console.ReadLine();
+#endif
+                return;
+            }
+
+            checkAndRun(options);
+
 #if DEBUG
             Console.ReadLine();
 #endif
         }
 
+        private static bool TryParseArgs(string[] args, out getCertOptions options, out string error)
+        {
+            options = new getCertOptions();
+            error = string.Empty;
+
+            for (var i = 0; i < args.Length; i++)
+            {
+                var arg = args[i];
+
+                if (arg == "-h" || arg == "--help")
+                {
+                    error = string.Empty;
+                    return false;
+                }
+
+                if (arg == "-c" || arg == "--chain")
+                {
+                    options.Chain = true;
+                    continue;
+                }
+
+                if (arg == "-i" || arg == "--info")
+                {
+                    options.Info = true;
+                    continue;
+                }
+
+                if (!TryGetOptionValue(args, ref i, out var value))
+                {
+                    error = $"Missing value for option '{arg}'.";
+                    return false;
+                }
+
+                if (arg == "-u" || arg == "--url")
+                {
+                    options.Url = value;
+                }
+                else if (arg == "-d" || arg == "--dir")
+                {
+                    options.Directory = value;
+                }
+                else if (arg == "-a" || arg == "--alias")
+                {
+                    options.Alias = value;
+                }
+                else
+                {
+                    error = $"Unknown option '{arg}'.";
+                    return false;
+                }
+            }
+
+            if (string.IsNullOrWhiteSpace(options.Url))
+            {
+                error = "Option -u|--url is required.";
+                return false;
+            }
+
+            if (options.Info && !string.IsNullOrWhiteSpace(options.Directory))
+            {
+                Console.WriteLine("WARNING: -d|--dir and -a|--alias are ignored when -i|--info is used.\n");
+                options.Directory = string.Empty;
+                options.Alias = string.Empty;
+            }
+
+            return true;
+        }
+
+        private static bool TryGetOptionValue(string[] args, ref int index, out string value)
+        {
+            value = string.Empty;
+
+            var nextIndex = index + 1;
+            if (nextIndex >= args.Length)
+            {
+                return false;
+            }
+
+            value = args[nextIndex];
+            index = nextIndex;
+            return true;
+        }
+
+        private static void PrintUsage(string error)
+        {
+            Console.WriteLine("getcert - Export TLS certificate(s) from an HTTPS endpoint");
+            Console.WriteLine("Usage: getcert -u|--url <url> [-c|--chain] [-i|--info] [-d|--dir <path>] [-a|--alias <name>]");
+            Console.WriteLine();
+            Console.WriteLine("Options:");
+            Console.WriteLine("  -u, --url     Required HTTPS URL or host.");
+            Console.WriteLine("  -c, --chain   Export full certificate chain.");
+            Console.WriteLine("  -i, --info    Print certificate info only.");
+            Console.WriteLine("  -d, --dir     Output directory for certificate files (ignored with -i|--info).");
+            Console.WriteLine("  -a, --alias   Output file base name. Default: [certificate] (ignored with -i|--info).");
+            Console.WriteLine("  -h, --help    Show help.");
+
+            if (!string.IsNullOrWhiteSpace(error))
+            {
+                Console.WriteLine();
+                Console.WriteLine($"ERROR: {error}");
+            }
+        }
+
         private static void SaveCertificate(Uri uri)
         {
-            HttpWebRequest request = (HttpWebRequest)WebRequest.Create(uri);
+            var request = (HttpWebRequest)WebRequest.Create(uri);
             request.AllowAutoRedirect = false;
             request.ServerCertificateValidationCallback = ServerCertificateValidationCallback;
 
-            HttpWebResponse response = (HttpWebResponse)request.GetResponse();
-            response.Close();
-
-//          X509Certificate2 cert = new X509Certificate2(request.ServicePoint.Certificate);
+            using (var response = (HttpWebResponse)request.GetResponse())
+            {
+            }
         }
 
         private static void checkAndRun(getCertOptions options)
         {
-            Uri newUri = null;
-
             try
             {
-
-                if (!checkAndValidateUrl(options.Url, out newUri))
+                if (!checkAndValidateUrl(options.Url, out var newUri))
                 {
                     throw new Exception("Url provided seems to be invalid");
                 }
 
                 getChain = options.Chain;
                 infoOnly = options.Info;
+                alias = string.IsNullOrWhiteSpace(options.Alias) ? "certificate" : options.Alias;
+                savePath = string.Empty;
 
-                if (infoOnly == false)
+                if (!infoOnly && !string.IsNullOrWhiteSpace(options.Directory))
                 {
-                    if (options.Directory != "")
+                    if (!checkAndValidatePath(options.Directory))
                     {
-                        if (!checkAndValidatePath(options.Directory))
-                        {
-                            throw new Exception("Directory provided is not valid or doesn't exist");
-                        }
-                        else
-                        {
-                            savePath = options.Directory;
-                        }
+                        throw new Exception("Directory provided is not valid or doesn't exist");
                     }
 
-                    if (options.Alias != "")
-                    {
-                        if (!IsFileNameCorrect(options.Alias))
-                        {
-                            throw new Exception("Filename provided seems to be not valid");
-                        }
-                        else
-                        {
-                            alias = options.Alias;
-                        }
-                    }
+                    savePath = options.Directory;
+                }
+
+                if (!infoOnly && !IsFileNameCorrect(alias))
+                {
+                    throw new Exception("Filename provided seems to be not valid");
                 }
 
                 SaveCertificate(newUri);
             }
-            catch(Exception x)
+            catch (Exception x)
             {
-                var webEx = x as WebException;
-
-                if (webEx != null && webEx.Response != null)
+                if (x is WebException webEx && webEx.Response is HttpWebResponse httpWebResponse)
                 {
-                    HttpWebResponse httpWebResponse = webEx.Response as HttpWebResponse;
-
-                    if (httpWebResponse != null)
+                    if (httpWebResponse.StatusCode == HttpStatusCode.NotFound)
                     {
-                        if (httpWebResponse.StatusCode == HttpStatusCode.NotFound)
-                            return;
+                        return;
                     }
                 }
 
-                Console.WriteLine(HeadingInfo.Default);
-                Console.WriteLine(CopyrightInfo.Default);
-                Console.WriteLine();                    
+                Console.WriteLine();
                 Console.WriteLine($"ERROR(S): {x.Message}");
-
             }
         }
 
-
-        public static string ExportToPEM(X509Certificate2 _cert)
+        public static string ExportToPEM(X509Certificate2 cert)
         {
-            StringBuilder builder = new StringBuilder();
+            var builder = new StringBuilder();
 
             try
             {
                 builder.AppendLine("-----BEGIN CERTIFICATE-----");
-                builder.AppendLine(Convert.ToBase64String(_cert.Export(X509ContentType.Cert), Base64FormattingOptions.InsertLineBreaks));
+                builder.AppendLine(Convert.ToBase64String(cert.Export(X509ContentType.Cert), Base64FormattingOptions.InsertLineBreaks));
                 builder.AppendLine("-----END CERTIFICATE-----");
-
             }
             catch (Exception)
             {
@@ -133,29 +212,32 @@ namespace getcert
 
         private static bool ServerCertificateValidationCallback(object sender, X509Certificate certificate, X509Chain chain, SslPolicyErrors sslPolicyErrors)
         {
-            int counter = 0;
+            var counter = 0;
 
             foreach (var cer in chain.ChainElements)
-            {                
+            {
                 printCertificateInfo(counter, cer);
 
-                if (infoOnly == false)
+                if (!infoOnly)
                 {
                     var cert = ExportToPEM(cer.Certificate);
 
                     Console.WriteLine(cert);
 
-                    if (savePath != "")
+                    if (!string.IsNullOrWhiteSpace(savePath))
                     {
                         var fullName = saveCertificate(counter, cert);
-                        
+
                         Console.WriteLine($"Certificate saved to file {fullName}");
                     }
                 }
+
                 Console.WriteLine();
 
-                if (counter == 0 && getChain == false)
+                if (counter == 0 && !getChain)
+                {
                     break;
+                }
 
                 counter++;
             }
@@ -167,53 +249,47 @@ namespace getcert
         {
             newUri = null;
 
-            try
-            {
-                // Unfortunately System.Uri class seems to not parse and check always well => try to use regex first
-                var patternUrl = @"^((https)\:\/\/)?([0-9a-zA-Z]([-.\w]*[0-9a-zA-Z])*)(:(0-9)*)*(\/?)([a-zA-Z0-9\-\.\?\,\'\/\\\+&amp;%\$#_]*)?$";
-
-                //@"^(?:http(s)?:\/\/)?[\w.-]+(?:\.[\w\.-]+)+[\w\-\._~:/?#[\]@!\$&'\(\)\*\+,;=.]+$"
-
-                Regex Rgx = new Regex(patternUrl, RegexOptions.Compiled | RegexOptions.IgnoreCase);
-
-                var matches = Rgx.Matches(url);
-
-                if (matches is null || matches.Count == 0)
-                    return false;
-
-                if (matches[0].Groups[2].Value == "")
-                {
-                    url = "https://" + url;
-                }
-
-                if (!Uri.IsWellFormedUriString(url, UriKind.Absolute))
-                    return false;
-
-                if (!Uri.TryCreate(url, UriKind.Absolute, out newUri) || newUri.Scheme != Uri.UriSchemeHttps)
-                    return false;
-            }
-            catch (Exception x)
+            if (string.IsNullOrWhiteSpace(url))
             {
                 return false;
             }
 
+            var candidate = url.Trim();
+            if (!candidate.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
+            {
+                candidate = $"https://{candidate}";
+            }
+
+            if (!Uri.TryCreate(candidate, UriKind.Absolute, out var parsedUri))
+            {
+                return false;
+            }
+
+            if (!Uri.UriSchemeHttps.Equals(parsedUri.Scheme, StringComparison.OrdinalIgnoreCase))
+            {
+                return false;
+            }
+
+            if (string.IsNullOrWhiteSpace(parsedUri.Host))
+            {
+                return false;
+            }
+
+            newUri = parsedUri;
             return true;
         }
 
         private static bool checkAndValidatePath(string path)
         {
-            if (!Directory.Exists(path))
-                return false;
-
-            return true;
+            return Directory.Exists(path);
         }
 
-        static bool IsFileNameCorrect(string fileName)
+        private static bool IsFileNameCorrect(string fileName)
         {
             return !fileName.Any(f => Path.GetInvalidFileNameChars().Contains(f));
         }
 
-        static void printCertificateInfo(int chainOrder, X509ChainElement cer)
+        private static void printCertificateInfo(int chainOrder, X509ChainElement cer)
         {
             Console.WriteLine($"Chain: {chainOrder}");
             Console.WriteLine($"Subject: {cer.Certificate.SubjectName.Name}");
@@ -223,15 +299,12 @@ namespace getcert
             Console.WriteLine($"Serial No:{cer.Certificate.SerialNumber}");
         }
 
-        static string saveCertificate(int chainOrder, string pemString)
+        private static string saveCertificate(int chainOrder, string pemString)
         {
-            string fullName = Path.Combine(savePath, string.Format("{0}-{1}.crt", alias, chainOrder));
+            var fullName = Path.Combine(savePath, string.Format("{0}-{1}.crt", alias, chainOrder));
             File.WriteAllText(fullName, pemString);
 
             return fullName;
         }
-
     }
-
-
 }

@@ -1,13 +1,21 @@
 # getcert
+
 Simple tool to download, display and save certificate(s) from given URL. 
 
+# What's new
+
+**1.0.0.3** - refactored with OpenAI Codex, removed CommandLineParser dependency
+
 # Note
-This little two-hours project has been written just for my purposes: to have such a simple tool without need to run openssl, to try interesting CommandLineParser library (https://github.com/commandlineparser) and finally to write a few lines of C# code again:)   
+
+This small two-hour project was written just for my own purposes — to have a simple tool without needing to run OpenSSL, and to finally write a few lines of C# code again. Now I refactored it a bit just to try OpenAI Codex in VS Code.
 
 # Known limitations
-For some websites requiring certificate authentication cannot be established SSL/TLS channel. Will solve in some of future updates.
+
+For some websites requiring certificate authentication cannot be established SSL/TLS channel. Will be solved in some of future updates.
 
 # Usage
+
 ```shell
 getcert -u|--url URL [-c|--chain] [-i|--info] [-d|--dir directory] [-a|--alias filename]
 ```
@@ -32,6 +40,3 @@ downloads all certificates in chain (three certificates) from `https://github.co
 
 When directory option is not provided certificate(s) content and properties are only displayed in command line.
 
-# Dependencies
-
-CommandLineParser https://github.com/commandlineparser
