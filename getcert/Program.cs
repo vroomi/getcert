@@ -3,6 +3,7 @@ using System.IO;
 using System.Linq;
 using System.Net;
 using System.Net.Security;
+using System.Reflection;
 using System.Security.Cryptography.X509Certificates;
 using System.Text;
 
@@ -119,6 +120,8 @@ namespace getcert
         private static void PrintUsage(string error)
         {
             Console.WriteLine("getcert - Export TLS certificate(s) from an HTTPS endpoint");
+            Console.WriteLine("Version {0}", GetProgramVersion());
+            Console.WriteLine();
             Console.WriteLine("Usage: getcert -u|--url <url> [-c|--chain] [-i|--info] [-d|--dir <path>] [-a|--alias <name>]");
             Console.WriteLine();
             Console.WriteLine("Options:");
@@ -134,6 +137,14 @@ namespace getcert
                 Console.WriteLine();
                 Console.WriteLine($"ERROR: {error}");
             }
+        }
+
+        private static string GetProgramVersion()
+        {
+            var assembly = Assembly.GetExecutingAssembly();
+            var fileVersion = assembly.GetCustomAttribute<AssemblyFileVersionAttribute>();
+
+            return fileVersion?.Version ?? assembly.GetName().Version?.ToString() ?? string.Empty;
         }
 
         private static void SaveCertificate(Uri uri)
