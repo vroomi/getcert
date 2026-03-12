@@ -38,6 +38,8 @@ namespace getcert
         {
             options = new getCertOptions();
             error = string.Empty;
+            var directorySpecified = false;
+            var aliasSpecified = false;
 
             for (var i = 0; i < args.Length; i++)
             {
@@ -74,10 +76,12 @@ namespace getcert
                 else if (arg == "-d" || arg == "--dir")
                 {
                     options.Directory = value;
+                    directorySpecified = true;
                 }
                 else if (arg == "-a" || arg == "--alias")
                 {
                     options.Alias = value;
+                    aliasSpecified = true;
                 }
                 else
                 {
@@ -92,7 +96,7 @@ namespace getcert
                 return false;
             }
 
-            if (options.Info && !string.IsNullOrWhiteSpace(options.Directory))
+            if (options.Info && (directorySpecified || aliasSpecified))
             {
                 Console.WriteLine("WARNING: -d|--dir and -a|--alias are ignored when -i|--info is used.\n");
                 options.Directory = string.Empty;
@@ -206,19 +210,18 @@ namespace getcert
 
         public static string ExportToPEM(X509Certificate2 cert)
         {
-            var builder = new StringBuilder();
-
             try
             {
+                var builder = new StringBuilder();
                 builder.AppendLine("-----BEGIN CERTIFICATE-----");
                 builder.AppendLine(Convert.ToBase64String(cert.Export(X509ContentType.Cert), Base64FormattingOptions.InsertLineBreaks));
                 builder.AppendLine("-----END CERTIFICATE-----");
+                return builder.ToString();
             }
-            catch (Exception)
+            catch (Exception ex)
             {
+                throw new InvalidOperationException("Failed to export certificate to PEM.", ex);
             }
-
-            return builder.ToString();
         }
 
         private static bool ServerCertificateValidationCallback(object sender, X509Certificate certificate, X509Chain chain, SslPolicyErrors sslPolicyErrors)
@@ -266,10 +269,24 @@ namespace getcert
             }
 
             var candidate = url.Trim();
-            if (!candidate.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
+
+            if (Uri.TryCreate(candidate, UriKind.Absolute, out var absoluteUri))
             {
-                candidate = $"https://{candidate}";
+                if (!Uri.UriSchemeHttps.Equals(absoluteUri.Scheme, StringComparison.OrdinalIgnoreCase))
+                {
+                    return false;
+                }
+
+                if (string.IsNullOrWhiteSpace(absoluteUri.Host))
+                {
+                    return false;
+                }
+
+                newUri = absoluteUri;
+                return true;
             }
+
+            candidate = $"https://{candidate}";
 
             if (!Uri.TryCreate(candidate, UriKind.Absolute, out var parsedUri))
             {
@@ -297,7 +314,35 @@ namespace getcert
 
         private static bool IsFileNameCorrect(string fileName)
         {
-            return !fileName.Any(f => Path.GetInvalidFileNameChars().Contains(f));
+            if (string.IsNullOrWhiteSpace(fileName))
+            {
+                return false;
+            }
+
+            if (fileName.Any(f => Path.GetInvalidFileNameChars().Contains(f)))
+            {
+                return false;
+            }
+
+            if (fileName.EndsWith(" ", StringComparison.Ordinal) || fileName.EndsWith(".", StringComparison.Ordinal))
+            {
+                return false;
+            }
+
+            return !IsReservedWindowsFileName(fileName);
+        }
+
+        private static bool IsReservedWindowsFileName(string fileName)
+        {
+            var normalizedName = Path.GetFileNameWithoutExtension(fileName.Trim());
+            var reservedNames = new[]
+            {
+                "CON", "PRN", "AUX", "NUL",
+                "COM1", "COM2", "COM3", "COM4", "COM5", "COM6", "COM7", "COM8", "COM9",
+                "LPT1", "LPT2", "LPT3", "LPT4", "LPT5", "LPT6", "LPT7", "LPT8", "LPT9"
+            };
+
+            return reservedNames.Contains(normalizedName, StringComparer.OrdinalIgnoreCase);
         }
 
         private static void printCertificateInfo(int chainOrder, X509ChainElement cer)
