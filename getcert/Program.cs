@@ -319,7 +319,8 @@ namespace getcert
                 return false;
             }
 
-            if (fileName.Any(f => Path.GetInvalidFileNameChars().Contains(f)))
+            var invalidChars = Path.GetInvalidFileNameChars();
+            if (fileName.IndexOfAny(invalidChars) >= 0)
             {
                 return false;
             }
