@@ -16,11 +16,20 @@
 
 ## Build And Validation
 
+- Always run build after code edits.
+- If behavior changes, include at least one concrete invocation example in the final summary.
+
+### Platform Any CPU
+
 - Debug build: `dotnet build getcert.sln`
 - Release build: `dotnet build getcert.sln -c Release`
 - Release output: `getcert/bin/Release/getcert.exe`
-- Always run build after code edits.
-- If behavior changes, include at least one concrete invocation example in the final summary.
+
+### Platform x64
+
+- Debug build: `dotnet build getcert.sln -p:Platform=x64`
+- Release build: `dotnet build getcert.sln -c Release -p:Platform=x64`
+- Release output: `getcert/bin/x64/Release/getcert.exe`
 
 ## CLI Behavior Contract
 
