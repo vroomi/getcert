@@ -1,0 +1,52 @@
+name: Release .NET 4.7.2 Console App
+
+on:
+  push:
+    tags: ['v*']  # Trigger on tag
+
+jobs:
+  build-and-release:
+    runs-on: windows-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Setup MSBuild
+      uses: microsoft/setup-msbuild@v2  
+
+    - name: Setup NuGet
+      uses: NuGet/setup-nuget@v2
+      with:
+        nuget-version: latest
+
+    - name: Restore NuGet packages
+      run: nuget restore getcert.sln  
+
+    - name: Build AnyCPU Release
+      run: msbuild getcert.sln /p:Configuration=Release /p:Platform="Any CPU" /p:PlatformTarget=AnyCPU /t:Build
+
+    - name: Build x64 Release
+      run: msbuild getcert.sln /p:Configuration=Release /p:Platform=x64 /t:Build
+
+    - name: Prepare artifacts
+      run: |
+        mkdir publish
+        mkdir publish\AnyCPU
+        mkdir publish\x64
+        copy bin\Release\AnyCPU\* publish\AnyCPU\ /Y
+        copy bin\x64\Release\* publish\x64\ /Y
+
+    - name: Zip artifacts
+      run: |
+        Compress-Archive -Path "publish/AnyCPU/*" -DestinationPath "getcert-${{ github.ref_name }}-net472-anyCPU.zip" -Force
+        Compress-Archive -Path "publish/x64/*" -DestinationPath "getcert-${{ github.ref_name }}-net472-x64.zip" -Force
+
+    - name: Create GitHub Release
+      uses: ncipollo/release-action@v1
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+        tagName: ${{ github.ref_name }}
+        name: Release ${{ github.ref_name }}
+        artifacts: "*.zip"
+        draft: false
+        prerelease: false
