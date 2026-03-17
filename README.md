@@ -5,6 +5,7 @@ Simple tool to download, display and save certificate(s) from given URL.
 # What's new
 
 **1.0.0.4** - chores with Codex && Copilot
+
 **1.0.0.3** - refactored with OpenAI Codex, removed CommandLineParser dependency
 
 # Note
