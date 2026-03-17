@@ -31,8 +31,8 @@ jobs:
     - name: Prepare artifacts
       run: |
         New-Item -ItemType Directory -Force -Path "publish\AnyCPU", "publish\x64"
-        Copy-Item "bin\Release\*" "publish\AnyCPU\" -Force -Recurse
-        Copy-Item "bin\x64\Release\*" "publish\x64\" -Force -Recurse
+        Copy-Item "getcert\bin\Release\*" "publish\AnyCPU\" -Force -Recurse
+        Copy-Item "getcert\bin\x64\Release\*" "publish\x64\" -Force -Recurse
 
     - name: Zip artifacts
       run: |
