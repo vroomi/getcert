@@ -41,16 +41,20 @@ getcert get -u|--url URL [-c|--chain] [-i|--info] [-d|--dir directory] [-a|--ali
 
 Certificate(s) can be saved in PEM format into given directory (with `-d` or `--dir` option) under filename `certificate-x.crt` where `-x` part states order of particular certificate in chain. User can use an alias option (`-a` or `--alias`) to replace `"certificate"` filename part with custom name. Existing export and info functionality is now available under the `get` command.
 
-For example following command:
-```shell
-getcert get -u www.kosik.cz -i
-```
-prints certificate information for `https://www.kosik.cz` without printing PEM contents.
+For example, following command:
 
-For example following command:
+```shell
+getcert get -u www.google.com -i
+```
+
+prints certificate information for `https://www.google.com` without printing PEM contents.
+
+For example, following command:
+
 ```shell
 getcert get -u github.com -c -d c:\temp -a github
 ```
+
 downloads all certificates in chain (three certificates) from `https://github.com` and saves them in `c:\temp` directory under filenames `github-0.crt`, `github-1.crt` and `github-2.crt`
 
 When directory option is not provided certificate(s) content and properties are only displayed in command line.
