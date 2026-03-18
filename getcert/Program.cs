@@ -15,12 +15,23 @@ namespace getcert
         private static bool infoOnly;
         private static string savePath = string.Empty;
         private static string alias = "certificate";
+        private const string GetCommand = "get";
+        private const string MissingCommandErrorMessage = "Command is required.";
 
         private static void Main(string[] args)
         {
-            if (!TryParseArgs(args, out var options, out var parseError))
+            if (!TryParseRootCommand(args, out var command, out var commandArgs, out var parseError))
             {
-                PrintUsage(parseError);
+                PrintRootUsage(parseError);
+#if DEBUG
+                Console.ReadLine();
+#endif
+                return;
+            }
+
+            if (!TryParseCommandArgs(command, commandArgs, out var options, out parseError))
+            {
+                PrintCommandUsage(command, parseError);
 #if DEBUG
                 Console.ReadLine();
 #endif
@@ -34,7 +45,48 @@ namespace getcert
 #endif
         }
 
-        private static bool TryParseArgs(string[] args, out getCertOptions options, out string error)
+        private static bool TryParseRootCommand(string[] args, out string command, out string[] commandArgs, out string error)
+        {
+            command = string.Empty;
+            commandArgs = Array.Empty<string>();
+            error = string.Empty;
+
+            if (args.Length == 0)
+            {
+                error = "Command is required.";
+                return false;
+            }
+
+            var candidate = args[0];
+            if (candidate == "-h" || candidate == "--help")
+            {
+                return false;
+            }
+
+            if (!string.Equals(candidate, GetCommand, StringComparison.OrdinalIgnoreCase))
+            {
+                error = $"Unknown command '{candidate}'.";
+                return false;
+            }
+
+            command = GetCommand;
+            commandArgs = args.Skip(1).ToArray();
+            return true;
+        }
+
+        private static bool TryParseCommandArgs(string command, string[] args, out getCertOptions options, out string error)
+        {
+            if (string.Equals(command, GetCommand, StringComparison.OrdinalIgnoreCase))
+            {
+                return TryParseGetArgs(args, out options, out error);
+            }
+
+            options = new getCertOptions();
+            error = $"Unknown command '{command}'.";
+            return false;
+        }
+
+        private static bool TryParseGetArgs(string[] args, out getCertOptions options, out string error)
         {
             options = new getCertOptions();
             error = string.Empty;
@@ -121,12 +173,42 @@ namespace getcert
             return true;
         }
 
-        private static void PrintUsage(string error)
+        private static void PrintRootUsage(string error)
         {
-            Console.WriteLine("getcert - Export TLS certificate(s) from an HTTPS endpoint");
+            Console.WriteLine("getcert - Export TLS certificate(s) from an HTTPS endpoint.");
             Console.WriteLine("Version {0}", GetProgramVersion());
             Console.WriteLine();
-            Console.WriteLine("Usage: getcert -u|--url <url> [-c|--chain] [-i|--info] [-d|--dir <path>] [-a|--alias <name>]");
+            Console.WriteLine("Usage: getcert <command> [options]");
+            Console.WriteLine();
+            Console.WriteLine("Commands:");
+            Console.WriteLine("  get           Fetch certificate(s) from an HTTPS endpoint.");
+            Console.WriteLine();
+            Console.WriteLine("Options:");
+            Console.WriteLine("  -h, --help    Show help.");
+
+            if (!string.IsNullOrWhiteSpace(error))
+            {
+                Console.WriteLine();
+                Console.WriteLine($"ERROR: {error}");
+                if (string.Equals(error, MissingCommandErrorMessage, StringComparison.Ordinal))
+                {
+                    Console.WriteLine("Try 'getcert get -h' for command-specific help.");
+                }
+            }
+        }
+
+        private static void PrintCommandUsage(string command, string error)
+        {
+            if (!string.Equals(command, GetCommand, StringComparison.OrdinalIgnoreCase))
+            {
+                PrintRootUsage(error);
+                return;
+            }
+
+            Console.WriteLine("getcert get - Fetch TLS certificate(s) from an HTTPS endpoint.");
+            Console.WriteLine("Version {0}", GetProgramVersion());
+            Console.WriteLine();
+            Console.WriteLine("Usage: getcert get -u|--url <url> [-c|--chain] [-i|--info] [-d|--dir <path>] [-a|--alias <name>]");
             Console.WriteLine();
             Console.WriteLine("Options:");
             Console.WriteLine("  -u, --url     Required HTTPS URL or host.");
@@ -140,6 +222,11 @@ namespace getcert
             {
                 Console.WriteLine();
                 Console.WriteLine($"ERROR: {error}");
+                if (error.StartsWith("Unknown option", StringComparison.Ordinal))
+                {
+                    Console.WriteLine("Use 'getcert -h' to list available commands.");
+                    Console.WriteLine($"Use 'getcert {command} -h' to list available options.");
+                }
             }
         }
 
