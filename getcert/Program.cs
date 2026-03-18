@@ -225,7 +225,7 @@ namespace getcert
                 if (error.StartsWith("Unknown option", StringComparison.Ordinal))
                 {
                     Console.WriteLine("Use 'getcert -h' to list available commands.");
-                    Console.WriteLine("Use 'getcert <command> -h' to list available options.");
+                    Console.WriteLine($"Use 'getcert {command} -h' to list available options.");
                 }
             }
         }
