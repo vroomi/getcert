@@ -16,6 +16,7 @@ namespace getcert
         private static string savePath = string.Empty;
         private static string alias = "certificate";
         private const string GetCommand = "get";
+        private const string MissingCommandErrorMessage = "Command is required.";
 
         private static void Main(string[] args)
         {
@@ -189,7 +190,7 @@ namespace getcert
             {
                 Console.WriteLine();
                 Console.WriteLine($"ERROR: {error}");
-                if (error == "Command is required.")
+                if (string.Equals(error, MissingCommandErrorMessage, StringComparison.Ordinal))
                 {
                     Console.WriteLine("Try 'getcert get -h' for command-specific help.");
                 }
