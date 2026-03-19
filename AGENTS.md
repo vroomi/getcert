@@ -12,7 +12,7 @@
 
 - Keep behavior stable unless explicitly asked to change it.
 - Prefer small, reviewable edits over large refactors.
-- Preserve command-based CLI compatibility for `getcert get` (`-u`, `-c`, `-i`, `-d`, `-a`, `-h`).
+- Preserve command-based CLI compatibility for `getcert get` (`<url>`, `-c`, `-i`, `-d`, `-a`, `-h`), while keeping legacy `-u|--url` support unless explicitly removed.
 
 ## Build And Validation
 
@@ -38,7 +38,8 @@
 - `getcert -h|--help` prints root help with available commands.
 - `getcert get -h|--help` prints help for the `get` command.
 - Unknown commands should return a clear error and show the correct root usage.
-- `-u|--url` is required for `get`.
+- Positional `<url>` is required for `get`.
+- Legacy `-u|--url` may remain supported for backward compatibility, but should not be required.
 - `-i|--info` prints certificate info only.
 - `-d|--dir` defines output directory for downloaded certificate files (is ignored when `-i|--info` is used, and should emit a warning).
 - `-c|--chain` includes full chain; otherwise only leaf cert.

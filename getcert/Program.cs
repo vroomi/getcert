@@ -115,6 +115,18 @@ namespace getcert
                     continue;
                 }
 
+                if (!arg.StartsWith("-", StringComparison.Ordinal))
+                {
+                    if (!string.IsNullOrWhiteSpace(options.Url))
+                    {
+                        error = $"Unexpected argument '{arg}'.";
+                        return false;
+                    }
+
+                    options.Url = arg;
+                    continue;
+                }
+
                 if (!TryGetOptionValue(args, ref i, out var value))
                 {
                     error = $"Missing value for option '{arg}'.";
@@ -144,7 +156,7 @@ namespace getcert
 
             if (string.IsNullOrWhiteSpace(options.Url))
             {
-                error = "Option -u|--url is required.";
+                error = "URL argument is required.";
                 return false;
             }
 
@@ -208,15 +220,18 @@ namespace getcert
             Console.WriteLine("getcert get - Fetch TLS certificate(s) from an HTTPS endpoint.");
             Console.WriteLine("Version {0}", GetProgramVersion());
             Console.WriteLine();
-            Console.WriteLine("Usage: getcert get -u|--url <url> [-c|--chain] [-i|--info] [-d|--dir <path>] [-a|--alias <name>]");
+            Console.WriteLine("Usage: getcert get <url> [-c|--chain] [-i|--info] [-d|--dir <path>] [-a|--alias <name>]");
             Console.WriteLine();
             Console.WriteLine("Options:");
-            Console.WriteLine("  -u, --url     Required HTTPS URL or host.");
+            Console.WriteLine("  <url>         Required HTTPS URL or host.");
             Console.WriteLine("  -c, --chain   Export full certificate chain.");
             Console.WriteLine("  -i, --info    Print certificate info only.");
             Console.WriteLine("  -d, --dir     Output directory for certificate files (ignored with -i|--info).");
             Console.WriteLine("  -a, --alias   Output file base name. Default: [certificate] (ignored with -i|--info).");
             Console.WriteLine("  -h, --help    Show help.");
+            Console.WriteLine();
+            Console.WriteLine("Compatibility:");
+            Console.WriteLine("  -u, --url     Accepted as a legacy alternative for <url>.");
 
             if (!string.IsNullOrWhiteSpace(error))
             {

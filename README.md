@@ -1,8 +1,10 @@
 # getcert
 
-Simple tool to download, display and save certificate(s) from given URL. 
+Simple tool to download, display and save certificate(s) from given HTTPS endpoint.
 
 # What's new
+
+**1.0.0.6** - `get` command now accepts required URL as a positional argument (`getcert get <url>`), while `-u|--url` remains supported for compatibility
 
 **1.0.0.5** - introduced command-based CLI via `getcert get ...`
 
@@ -27,16 +29,18 @@ getcert <command> [options]
 Currently supported command:
 
 ```shell
-getcert get -u|--url URL [-c|--chain] [-i|--info] [-d|--dir directory] [-a|--alias filename]
+getcert get URL [-c|--chain] [-i|--info] [-d|--dir directory] [-a|--alias filename]
 ```
 | **Option**        | **Required** | **Default value** | **Description**                                                                                                 |
 |-------------------|--------------|-------------------|-----------------------------------------------------------------------------------------------------------------|
-| `-u` or `--url`   | Yes          | no default value  | URL or HTTPS host to get certificates from                                                                      |
+| `URL`             | Yes          | no default value  | URL or HTTPS host to get certificates from                                                                      |
 | `-c` or `--chain` | No           | false             | Get and display all certificates in chain  <br>  <br>If not used, only first certificate in chain is downloaded |
 | `-i` or `--info`  | No           | false             | Get and display certificate(s) info only  <br>  <br>When used, saving options (`-d`, `-a`) are ignored          |
 | `-d` or `--dir`   | No           | ""                | Directory to save certificate(s) to  <br>  <br>Existing directory must be provided                              |
 | `-a` or `--alias` | No           | "certificate"     | Filename prefix to save certificate(s)                                                                          |
 | `-h` or `--help`  | No           |                   | Display help screen for the `get` command                                                                       |
+
+For backward compatibility, `-u` or `--url` can still be used instead of the positional `URL` argument.
 
 
 Certificate(s) can be saved in PEM format into given directory (with `-d` or `--dir` option) under filename `certificate-x.crt` where `-x` part states order of particular certificate in chain. User can use an alias option (`-a` or `--alias`) to replace `"certificate"` filename part with custom name. Existing export and info functionality is now available under the `get` command.
@@ -44,7 +48,7 @@ Certificate(s) can be saved in PEM format into given directory (with `-d` or `--
 For example, following command:
 
 ```shell
-getcert get -u www.google.com -i
+getcert get www.google.com -i
 ```
 
 prints certificate information for `https://www.google.com` without printing PEM contents.
@@ -52,7 +56,7 @@ prints certificate information for `https://www.google.com` without printing PEM
 For example, following command:
 
 ```shell
-getcert get -u github.com -c -d c:\temp -a github
+getcert get github.com -c -d c:\temp -a github
 ```
 
 downloads all certificates in chain (three certificates) from `https://github.com` and saves them in `c:\temp` directory under filenames `github-0.crt`, `github-1.crt` and `github-2.crt`
