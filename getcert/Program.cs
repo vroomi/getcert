@@ -209,14 +209,14 @@ namespace getcert
                     continue;
                 }
 
-                if (!TryGetOptionValue(args, ref i, out var value))
-                {
-                    error = $"Missing value for option '{arg}'.";
-                    return false;
-                }
-
                 if (arg == "-f" || arg == "--format")
                 {
+                    if (!TryGetOptionValue(args, ref i, out var value))
+                    {
+                        error = $"Missing value for option '{arg}'.";
+                        return false;
+                    }
+
                     options.Format = value;
                 }
                 else
