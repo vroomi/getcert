@@ -23,7 +23,7 @@ This small two-hour project was written just for my own purposes - to have a sim
 
 # Known limitations
 
-For some websites requiring certificate authentication cannot be established SSL/TLS channel. Will be solved in some of future updates. Or maybe not:)
+For websites that require client-certificate (mutual TLS) authentication, the SSL/TLS channel may not be established. This limitation may be addressed in a future update.
 
 # Usage
 
