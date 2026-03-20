@@ -525,12 +525,21 @@ namespace getcert
 
         private static IEnumerable<X509Certificate2> LoadPemCertificates(string filePath)
         {
-            var content = File.ReadAllText(filePath);
-            var matches = Regex.Matches(
-                content,
-                "-----BEGIN ([^-]+)-----(.*?)-----END \\1-----",
-                RegexOptions.Singleline | RegexOptions.CultureInvariant);
+            string content;
+            MatchCollection matches;
 
+            try
+            {
+                content = File.ReadAllText(filePath);
+                matches = Regex.Matches(
+                    content,
+                    "-----BEGIN ([^-]+)-----(.*?)-----END \\1-----",
+                    RegexOptions.Singleline | RegexOptions.CultureInvariant);
+            }
+            catch (Exception ex)
+            {
+                throw new InvalidOperationException("Failed to read PEM certificate from the provided file.", ex);
+            }
             var certificates = new List<X509Certificate2>();
             var ignoredBlockTypes = new List<string>();
 
