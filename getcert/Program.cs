@@ -484,15 +484,25 @@ namespace getcert
             }
 
             var certificates = LoadCertificates(options.FilePath, options.Format).ToList();
-            if (certificates.Count == 0)
+            try
             {
-                throw new Exception("No certificate was found in the provided file.");
-            }
+                if (certificates.Count == 0)
+                {
+                    throw new Exception("No certificate was found in the provided file.");
+                }
 
-            for (var i = 0; i < certificates.Count; i++)
+                for (var i = 0; i < certificates.Count; i++)
+                {
+                    PrintCertificateInfo(i, certificates[i]);
+                    Console.WriteLine();
+                }
+            }
+            finally
             {
-                PrintCertificateInfo(i, certificates[i]);
-                Console.WriteLine();
+                foreach (var certificate in certificates)
+                {
+                    certificate?.Dispose();
+                }
             }
         }
 
