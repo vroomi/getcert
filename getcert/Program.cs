@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Net;
@@ -6,6 +7,7 @@ using System.Net.Security;
 using System.Reflection;
 using System.Security.Cryptography.X509Certificates;
 using System.Text;
+using System.Text.RegularExpressions;
 
 namespace getcert
 {
@@ -16,6 +18,10 @@ namespace getcert
         private static string savePath = string.Empty;
         private static string alias = "certificate";
         private const string GetCommand = "get";
+        private const string ViewCommand = "view";
+        private const string PemFormat = "pem";
+        private const string DerFormat = "der";
+        private const string Pkcs12Format = "pkcs12";
         private const string MissingCommandErrorMessage = "Command is required.";
 
         private static void Main(string[] args)
@@ -38,7 +44,7 @@ namespace getcert
                 return;
             }
 
-            checkAndRun(options);
+            CheckAndRun(command, options);
 
 #if DEBUG
             Console.ReadLine();
@@ -53,7 +59,7 @@ namespace getcert
 
             if (args.Length == 0)
             {
-                error = "Command is required.";
+                error = MissingCommandErrorMessage;
                 return false;
             }
 
@@ -63,13 +69,14 @@ namespace getcert
                 return false;
             }
 
-            if (!string.Equals(candidate, GetCommand, StringComparison.OrdinalIgnoreCase))
+            if (!string.Equals(candidate, GetCommand, StringComparison.OrdinalIgnoreCase)
+                && !string.Equals(candidate, ViewCommand, StringComparison.OrdinalIgnoreCase))
             {
                 error = $"Unknown command '{candidate}'.";
                 return false;
             }
 
-            command = GetCommand;
+            command = candidate;
             commandArgs = args.Skip(1).ToArray();
             return true;
         }
@@ -79,6 +86,11 @@ namespace getcert
             if (string.Equals(command, GetCommand, StringComparison.OrdinalIgnoreCase))
             {
                 return TryParseGetArgs(args, out options, out error);
+            }
+
+            if (string.Equals(command, ViewCommand, StringComparison.OrdinalIgnoreCase))
+            {
+                return TryParseViewArgs(args, out options, out error);
             }
 
             options = new getCertOptions();
@@ -170,6 +182,66 @@ namespace getcert
             return true;
         }
 
+        private static bool TryParseViewArgs(string[] args, out getCertOptions options, out string error)
+        {
+            options = new getCertOptions();
+            error = string.Empty;
+
+            for (var i = 0; i < args.Length; i++)
+            {
+                var arg = args[i];
+
+                if (arg == "-h" || arg == "--help")
+                {
+                    error = string.Empty;
+                    return false;
+                }
+
+                if (!arg.StartsWith("-", StringComparison.Ordinal))
+                {
+                    if (!string.IsNullOrWhiteSpace(options.FilePath))
+                    {
+                        error = $"Unexpected argument '{arg}'.";
+                        return false;
+                    }
+
+                    options.FilePath = arg;
+                    continue;
+                }
+
+                if (!TryGetOptionValue(args, ref i, out var value))
+                {
+                    error = $"Missing value for option '{arg}'.";
+                    return false;
+                }
+
+                if (arg == "-f" || arg == "--format")
+                {
+                    options.Format = value;
+                }
+                else
+                {
+                    error = $"Unknown option '{arg}'.";
+                    return false;
+                }
+            }
+
+            if (string.IsNullOrWhiteSpace(options.FilePath))
+            {
+                error = "File argument is required.";
+                return false;
+            }
+
+            if (!IsSupportedFormat(options.Format))
+            {
+                error = $"Invalid format '{options.Format}'. Supported values: {PemFormat}, {DerFormat}, {Pkcs12Format}.";
+                return false;
+            }
+
+            options.Format = NormalizeFormat(options.Format);
+            return true;
+        }
+
         private static bool TryGetOptionValue(string[] args, ref int index, out string value)
         {
             value = string.Empty;
@@ -194,6 +266,7 @@ namespace getcert
             Console.WriteLine();
             Console.WriteLine("Commands:");
             Console.WriteLine("  get           Fetch certificate(s) from an HTTPS endpoint.");
+            Console.WriteLine("  view          Display certificate info from a file.");
             Console.WriteLine();
             Console.WriteLine("Options:");
             Console.WriteLine("  -h, --help    Show help.");
@@ -204,13 +277,19 @@ namespace getcert
                 Console.WriteLine($"ERROR: {error}");
                 if (string.Equals(error, MissingCommandErrorMessage, StringComparison.Ordinal))
                 {
-                    Console.WriteLine("Try 'getcert get -h' for command-specific help.");
+                    Console.WriteLine("Try 'getcert get -h' or 'getcert view -h' for command-specific help.");
                 }
             }
         }
 
         private static void PrintCommandUsage(string command, string error)
         {
+            if (string.Equals(command, ViewCommand, StringComparison.OrdinalIgnoreCase))
+            {
+                PrintViewUsage(error);
+                return;
+            }
+
             if (!string.Equals(command, GetCommand, StringComparison.OrdinalIgnoreCase))
             {
                 PrintRootUsage(error);
@@ -245,6 +324,31 @@ namespace getcert
             }
         }
 
+        private static void PrintViewUsage(string error)
+        {
+            Console.WriteLine("getcert view - Display certificate info from a file.");
+            Console.WriteLine("Version {0}", GetProgramVersion());
+            Console.WriteLine();
+            Console.WriteLine("Usage: getcert view <file> [-f|--format <format>]");
+            Console.WriteLine();
+            Console.WriteLine("Options:");
+            Console.WriteLine("  <file>            Required certificate file path.");
+            Console.WriteLine("  -f, --format      Certificate format. Supported values: pem, der, pkcs12.");
+            Console.WriteLine("                    Default: pem. pkcs12 is reserved and not supported yet.");
+            Console.WriteLine("  -h, --help        Show help.");
+
+            if (!string.IsNullOrWhiteSpace(error))
+            {
+                Console.WriteLine();
+                Console.WriteLine($"ERROR: {error}");
+                if (error.StartsWith("Unknown option", StringComparison.Ordinal))
+                {
+                    Console.WriteLine("Use 'getcert -h' to list available commands.");
+                    Console.WriteLine($"Use 'getcert {ViewCommand} -h' to list available options.");
+                }
+            }
+        }
+
         private static string GetProgramVersion()
         {
             var assembly = Assembly.GetExecutingAssembly();
@@ -264,11 +368,17 @@ namespace getcert
             }
         }
 
-        private static void checkAndRun(getCertOptions options)
+        private static void CheckAndRun(string command, getCertOptions options)
         {
             try
             {
-                if (!checkAndValidateUrl(options.Url, out var newUri))
+                if (string.Equals(command, ViewCommand, StringComparison.OrdinalIgnoreCase))
+                {
+                    ViewCertificates(options);
+                    return;
+                }
+
+                if (!CheckAndValidateUrl(options.Url, out var newUri))
                 {
                     throw new Exception("Url provided seems to be invalid");
                 }
@@ -280,7 +390,7 @@ namespace getcert
 
                 if (!infoOnly && !string.IsNullOrWhiteSpace(options.Directory))
                 {
-                    if (!checkAndValidatePath(options.Directory))
+                    if (!CheckAndValidatePath(options.Directory))
                     {
                         throw new Exception("Directory provided is not valid or doesn't exist");
                     }
@@ -332,7 +442,7 @@ namespace getcert
 
             foreach (var cer in chain.ChainElements)
             {
-                printCertificateInfo(counter, cer);
+                PrintCertificateInfo(counter, cer.Certificate);
 
                 if (!infoOnly)
                 {
@@ -342,7 +452,7 @@ namespace getcert
 
                     if (!string.IsNullOrWhiteSpace(savePath))
                     {
-                        var fullName = saveCertificate(counter, cert);
+                        var fullName = SaveCertificate(counter, cert);
 
                         Console.WriteLine($"Certificate saved to file {fullName}");
                     }
@@ -361,7 +471,102 @@ namespace getcert
             return true;
         }
 
-        private static bool checkAndValidateUrl(string url, out Uri newUri)
+        private static void ViewCertificates(getCertOptions options)
+        {
+            if (!CheckAndValidateFile(options.FilePath))
+            {
+                throw new Exception("File provided is not valid or doesn't exist");
+            }
+
+            if (string.Equals(options.Format, Pkcs12Format, StringComparison.OrdinalIgnoreCase))
+            {
+                throw new NotSupportedException("Format 'pkcs12' is not supported yet.");
+            }
+
+            var certificates = LoadCertificates(options.FilePath, options.Format).ToList();
+            if (certificates.Count == 0)
+            {
+                throw new Exception("No certificate was found in the provided file.");
+            }
+
+            for (var i = 0; i < certificates.Count; i++)
+            {
+                PrintCertificateInfo(i, certificates[i]);
+                Console.WriteLine();
+            }
+        }
+
+        private static IEnumerable<X509Certificate2> LoadCertificates(string filePath, string format)
+        {
+            if (string.Equals(format, DerFormat, StringComparison.OrdinalIgnoreCase))
+            {
+                return new[] { LoadDerCertificate(filePath) };
+            }
+
+            if (string.Equals(format, PemFormat, StringComparison.OrdinalIgnoreCase))
+            {
+                return LoadPemCertificates(filePath);
+            }
+
+            throw new NotSupportedException($"Format '{format}' is not supported.");
+        }
+
+        private static X509Certificate2 LoadDerCertificate(string filePath)
+        {
+            try
+            {
+                return new X509Certificate2(File.ReadAllBytes(filePath));
+            }
+            catch (Exception ex)
+            {
+                throw new InvalidOperationException("Failed to read DER certificate from the provided file.", ex);
+            }
+        }
+
+        private static IEnumerable<X509Certificate2> LoadPemCertificates(string filePath)
+        {
+            var content = File.ReadAllText(filePath);
+            var matches = Regex.Matches(
+                content,
+                "-----BEGIN ([^-]+)-----(.*?)-----END \\1-----",
+                RegexOptions.Singleline | RegexOptions.CultureInvariant);
+
+            var certificates = new List<X509Certificate2>();
+            var ignoredBlockTypes = new List<string>();
+
+            foreach (Match match in matches)
+            {
+                var blockType = match.Groups[1].Value.Trim();
+                var blockBody = match.Groups[2].Value;
+
+                if (!string.Equals(blockType, "CERTIFICATE", StringComparison.OrdinalIgnoreCase))
+                {
+                    ignoredBlockTypes.Add(blockType);
+                    continue;
+                }
+
+                try
+                {
+                    var sanitizedBody = RemovePemWhitespace(blockBody);
+                    certificates.Add(new X509Certificate2(Convert.FromBase64String(sanitizedBody)));
+                }
+                catch (Exception ex)
+                {
+                    throw new InvalidOperationException("Failed to read PEM certificate from the provided file.", ex);
+                }
+            }
+
+            if (ignoredBlockTypes.Count > 0)
+            {
+                Console.WriteLine(
+                    $"WARNING: Ignoring unsupported PEM block(s): {string.Join(", ", ignoredBlockTypes.Distinct(StringComparer.OrdinalIgnoreCase))}.");
+                Console.WriteLine();
+            }
+
+            return certificates;
+        }
+
+        private static bool CheckAndValidateUrl(string url, out Uri newUri)
         {
             newUri = null;
 
@@ -409,9 +614,32 @@ namespace getcert
             return true;
         }
 
-        private static bool checkAndValidatePath(string path)
+        private static bool CheckAndValidatePath(string path)
         {
             return Directory.Exists(path);
+        }
+
+        private static bool CheckAndValidateFile(string path)
+        {
+            return !string.IsNullOrWhiteSpace(path) && File.Exists(path) && !Directory.Exists(path);
+        }
+
+        private static bool IsSupportedFormat(string format)
+        {
+            var normalizedFormat = NormalizeFormat(format);
+            return string.Equals(normalizedFormat, PemFormat, StringComparison.Ordinal)
+                || string.Equals(normalizedFormat, DerFormat, StringComparison.Ordinal)
+                || string.Equals(normalizedFormat, Pkcs12Format, StringComparison.Ordinal);
+        }
+
+        private static string NormalizeFormat(string format)
+        {
+            return string.IsNullOrWhiteSpace(format) ? PemFormat : format.Trim().ToLowerInvariant();
+        }
+
+        private static string RemovePemWhitespace(string value)
+        {
+            return new string(value.Where(c => !char.IsWhiteSpace(c)).ToArray());
         }
 
         private static bool IsFileNameCorrect(string fileName)
@@ -449,17 +677,17 @@ namespace getcert
             return reservedNames.Contains(normalizedName, StringComparer.OrdinalIgnoreCase);
         }
 
-        private static void printCertificateInfo(int chainOrder, X509ChainElement cer)
+        private static void PrintCertificateInfo(int chainOrder, X509Certificate2 certificate)
         {
             Console.WriteLine($"Chain: {chainOrder}");
-            Console.WriteLine($"Subject: {cer.Certificate.SubjectName.Name}");
-            Console.WriteLine($"Issuer: {cer.Certificate.IssuerName.Name}");
-            Console.WriteLine($"Valid from:{cer.Certificate.GetEffectiveDateString()}");
-            Console.WriteLine($"Valid to:{cer.Certificate.GetExpirationDateString()}");
-            Console.WriteLine($"Serial No:{cer.Certificate.SerialNumber}");
+            Console.WriteLine($"Subject: {certificate.SubjectName.Name}");
+            Console.WriteLine($"Issuer: {certificate.IssuerName.Name}");
+            Console.WriteLine($"Valid from:{certificate.GetEffectiveDateString()}");
+            Console.WriteLine($"Valid to:{certificate.GetExpirationDateString()}");
+            Console.WriteLine($"Serial No:{certificate.SerialNumber}");
         }
 
-        private static string saveCertificate(int chainOrder, string pemString)
+        private static string SaveCertificate(int chainOrder, string pemString)
         {
             var fullName = Path.Combine(savePath, string.Format("{0}-{1}.crt", alias, chainOrder));
             File.WriteAllText(fullName, pemString);
