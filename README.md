@@ -1,6 +1,6 @@
 # getcert
 
-Simple tool to download, display and save certificate(s) from given HTTPS endpoint.
+Simple tool to download, display and save certificate(s) from a given HTTPS endpoint.
 
 # What's new
 
